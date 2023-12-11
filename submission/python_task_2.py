@@ -93,49 +93,50 @@ def calculate_toll_rate(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
+import pandas as pd
+from datetime import time
+
 def calculate_time_based_toll_rates(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Calculate time-based toll rates for different time intervals within a day.
+    Calculates toll rates for different time intervals within a day.
 
     Args:
-        df (pandas.DataFrame)
+        df (pandas.DataFrame): Input DataFrame with columns 'startDay', 'startTime', 'endDay', 'endTime'.
 
     Returns:
-        pandas.DataFrame
+        pandas.DataFrame: Original DataFrame with additional columns for start_day, start_time, end_day, and end_time.
+                          Vehicle columns are modified based on the specified time ranges and discount factors.
     """
-    # Convert start_time and end_time to datetime.time()
-    df['start_time'] = pd.to_datetime(df['start_time']).dt.time
-    df['end_time'] = pd.to_datetime(df['end_time']).dt.time
+    # Define time ranges and discount factors
+    weekday_discounts = [(time(0, 0, 0), time(10, 0, 0), 0.8),
+                         (time(10, 0, 0), time(18, 0, 0), 1.2),
+                         (time(18, 0, 0), time(23, 59, 59), 0.8)]
 
-    # Create new columns for start_day, end_day, and time-based toll rates
-    df['start_day'] = df['start_datetime'].dt.strftime('%A')
-    df['end_day'] = df['end_datetime'].dt.strftime('%A')
+    weekend_discount = 0.7
 
-    # Define time intervals for weekdays and weekends
-    weekday_intervals = [
-        (pd.to_datetime('00:00:00').time(), pd.to_datetime('10:00:00').time(), 0.8),
-        (pd.to_datetime('10:00:00').time(), pd.to_datetime('18:00:00').time(), 1.2),
-        (pd.to_datetime('18:00:00').time(), pd.to_datetime('23:59:59').time(), 0.8)
-    ]
+    # Create new columns for start_day, start_time, end_day, and end_time
+    df['start_datetime'] = pd.to_datetime(df['startDay'] + ' ' + df['startTime'])
+    df['end_datetime'] = pd.to_datetime(df['endDay'] + ' ' + df['endTime'])
 
-    weekend_intervals = [
-        (pd.to_datetime('00:00:00').time(), pd.to_datetime('23:59:59').time(), 0.7)
-    ]
+    df['start_day'] = df['start_datetime'].dt.day_name()
+    df['start_time'] = df['start_datetime'].dt.time
+    df['end_day'] = df['end_datetime'].dt.day_name()
+    df['end_time'] = df['end_datetime'].dt.time
 
-    # Apply time-based toll rates for each row
-    for _, row in df.iterrows():
-        if row['start_day'] in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']:
-            intervals = weekday_intervals
-        else:
-            intervals = weekend_intervals
+    # Apply discount factors based on time ranges
+    for start_time, end_time, discount_factor in weekday_discounts:
+        mask = (df['start_time'] >= start_time) & (df['start_time'] <= end_time) & (df['start_day'].isin(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']))
+        df.loc[mask, ['car', 'bus', 'truck']] *= discount_factor
 
-        for start, end, discount_factor in intervals:
-            if start <= row['start_time'] <= end and start <= row['end_time'] <= end:
-                df.at[_, 'moto'] = row['moto'] * discount_factor
-                df.at[_, 'car'] = row['car'] * discount_factor
-                df.at[_, 'rv'] = row['rv'] * discount_factor
-                df.at[_, 'bus'] = row['bus'] * discount_factor
-                df.at[_, 'truck'] = row['truck'] * discount_factor
-                break
+    # Apply constant discount factor for weekends
+    mask_weekend = df['start_day'].isin(['Saturday', 'Sunday'])
+    df.loc[mask_weekend, ['car', 'bus', 'truck']] *= weekend_discount
 
     return df
+
+
+
+df = pd.DataFrame(data)
+
+result_df = calculate_time_based_toll_rates(df)
+print(result_df)
