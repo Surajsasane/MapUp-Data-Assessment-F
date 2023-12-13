@@ -131,12 +131,10 @@ def calculate_time_based_toll_rates(df: pd.DataFrame) -> pd.DataFrame:
     # Apply constant discount factor for weekends
     mask_weekend = df['start_day'].isin(['Saturday', 'Sunday'])
     df.loc[mask_weekend, ['car', 'bus', 'truck']] *= weekend_discount
+    
+   result_df = calculate_time_based_toll_rates(df)
+    
+   print(result_df)
 
-    return df
 
 
-
-df = pd.DataFrame(data)
-
-result_df = calculate_time_based_toll_rates(df)
-print(result_df)
